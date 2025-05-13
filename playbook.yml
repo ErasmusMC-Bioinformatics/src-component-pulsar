@@ -56,6 +56,35 @@
           - gnutls-bin # workaround for git-clone issue, https://stackoverflow.com/a/53147659/4326632
         state: present
 
+# Implementation to connect the Pulsar to Snellius and send jobs there.
+    - name: Clone SLURM CLI API Proxy client
+      ansible.builtin.git:
+        repo: https://github.com/SLURM-CLI-API-Proxy/SLURM-CLI-API-Proxy-client.git
+        dest: /opt/SLURM-CLI-API-Proxy-client
+        version: main
+
+    - name: Create virtual environment for SLURM CLI API Proxy client
+      ansible.builtin.command:
+        cmd: python3 -m venv /opt/SLURM-CLI-API-Proxy-client/env
+        creates: /opt/SLURM-CLI-API-Proxy-client/env/bin/activate
+
+    - name: Install SLURM CLI API Proxy client into virtualenv
+      ansible.builtin.pip:
+        name: .
+        chdir: /opt/SLURM-CLI-API-Proxy-client
+        virtualenv: /opt/SLURM-CLI-API-Proxy-client/env
+
+    - name: Configure SLURM proxy environment variables
+      ansible.builtin.copy:
+        dest: /etc/profile.d/slurm_proxy.sh
+        content: |
+          export PROXY_SLURM_API_URL=http://<slurm-controller>:6820
+          export SLURM_JWT=$(scontrol token)
+          export PATH=/opt/SLURM-CLI-API-Proxy-client/env/bin:$PATH
+        owner: root
+        group: root
+        mode: '0755'
+
   roles:
     - geerlingguy.docker
     - galaxyproject.cvmfs
