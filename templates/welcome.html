@@ -1,49 +1,86 @@
 <!doctype html>
 <html lang="en">
 <head>
-
   <meta charset="utf-8">
   <title>Pulsar Configuration</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/concrete.css/3.0.0/concrete.min.css">
-  <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/concrete.css/3.0.0/concrete.min.css">
+  <meta name="theme-color" content="#0b1f3a">
 
   <style>
-    .row {
+    :root{
+      --brand-bg: #0b1f3a;  /* dark header */
+      --page-bg:  #ffffff;  /* light body */
+      --brand-fg: #ffffff;
+    }
+
+    html, body { height: 100%; margin: 0; }
+    body { background: var(--page-bg); color: #222; }
+
+    /* Header bar */
+    .brand-bar{
+      background: var(--brand-bg);
+      color: var(--brand-fg);
       display: flex;
-      flex-direction: column;
-      padding: 0;
+      align-items: center;
+      justify-content: space-between;
+      padding: .6rem 1rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+      position: relative; /* for centered title */
+    }
+    .brand-left, .brand-right{
+      display: flex; align-items: center; gap: .75rem;
+    }
+    /* Smaller Pulsar/SURF logos */
+    .brand-logo{ height: 28px; width: auto; object-fit: contain; display: block; }
+
+    /* Centered title */
+    .brand-title{
+      position: absolute; left: 50%; transform: translateX(-50%);
+      margin: 0; font-size: 1.25rem; font-weight: 600; line-height: 1; color: var(--brand-fg);
+      text-align: center;
     }
 
-    .row .column {
-      display: block;
-      flex: 1 1 auto;
-      margin-left: 0;
-      max-width: 100%;
-      width: 100%;
-    }
+    main { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
 
-    @media (min-width: 30.0rem) {
-      .row {
-        flex-direction: row;
-        margin: 0 -.5rem;
-        width: calc(100% + 1rem);
-      }
-
-      .row .column {
-        margin-bottom: inherit;
-        padding: 0 .5rem;
-      }
+    .copy-box { position: relative; border: 1px solid #e1e4e8; border-radius: 8px; padding: .75rem; background: #fafafa; }
+    .copy-box pre { margin: 0; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .copy-btn {
+      position: absolute; top: .5rem; right: .5rem;
+      border: 1px solid #d0d7de; border-radius: 6px; background: #f6f8fa;
+      padding: .25rem .5rem; cursor: pointer;
     }
+    .warning { background: #fff8e1; border: 1px solid #ffe08a; padding: .75rem; border-radius: 6px; }
+    code { white-space: nowrap; background: #f2f2f2; padding: 0 .25rem; border-radius: 4px; }
+
+    a { color: #0b1f3a; text-decoration: none; }
+    a:hover { text-decoration: underline; }
   </style>
-
 </head>
 
 <body>
+  <header class="brand-bar" role="banner" aria-label="Brand">
+    <div class="brand-left">
+      <a href="https://galaxyproject.org/pulsar" target="_blank" rel="noopener">
+        <img class="brand-logo"
+             src="https://galaxyproject.org/images/galaxy-logos/pulsar_transparent.png"
+             alt="Pulsar logo">
+      </a>
+    </div>
 
+    <h1 class="brand-title">Pulsar Configuration</h1>
+
+    <div class="brand-right">
+      <a href="https://www.surf.nl/en" target="_blank" rel="noopener">
+        <img class="brand-logo"
+             src="https://www.ictopen.nl/sites/ict_open/files/styles/max_1300x1300/public/media-images/Logo%20SURF%20groot_0.png?itok=7aw8DXCZ"
+             alt="SURF logo">
+      </a>
+    </div>
+  </header>
   <main>
-    <h1>Pulsar Configuration Information</h1>
-    <p>Auto-generated as part of deployment</p>
+    <p><strong>Auto-generated as part of deployment</strong></p>
 
     <section>
       <h2>About</h2>
@@ -51,14 +88,44 @@
         <li><strong>Admins:</strong> {{ fact_co_groups.src_co_admin }}</li>
         <li><strong>Workspace FQDN:</strong> {{ workspace_fqdn | default('localhost', true) }}</li>
       </ul>
+    </section>
 
-      <h2>Configuring Galaxy</h2>
-      <p>On the Galaxy machine, add the following configuration to your Galaxy <code>job_conf</code> to enable the use of this Pulsar endpoint</p>
+    <section>
+      <h2>Connect to New Galaxy Workspace</h2>
+      <p>When creating a <strong>new Galaxy workspace</strong> on SURF Research Cloud, copy and paste these values into the workspace parameters:</p>
 
+      <h3>Pulsar Configurations</h3>
+      <p>Copy this <strong>entire line</strong> (including the brackets):</p>
+      <div class="copy-box">
+        <button class="copy-btn" onclick="copyToClipboard('pulsar-config')">Copy</button>
+        <pre id="pulsar-config">[{url: https://{{ workspace_fqdn | default('localhost', true) }}, private_token: {{ pulsar_token | default('unknown', true) }}, docker_enabled: true}]</pre>
+      </div>
+      <p><em>Paste this into the <strong>"Connect existing Pulsar"</strong> parameter field.</em></p>
 
+      <h3>Tool Mappings</h3>
+      <p>Example: send BWA and Bowtie2 tools to this Pulsar server:</p>
+      <div class="copy-box">
+        <button class="copy-btn" onclick="copyToClipboard('tool-mappings')">Copy</button>
+        <pre id="tool-mappings">[{tool_id: bwa, environment: remote_{{ ansible_hostname | replace('.', '-') | replace('_', '-') }}}, {tool_id: bowtie2, environment: remote_{{ ansible_hostname | replace('.', '-') | replace('_', '-') }}}]</pre>
+      </div>
+      <p><em>Paste this into the <strong>"Send tools to Pulsar"</strong> parameter field.</em></p>
+
+      <div class="warning">
+        <strong>Important Notes:</strong>
+        <ul>
+          <li>Copy the <strong>entire line</strong> including all brackets <code>[ ]</code>.</li>
+          <li><strong>Do NOT add extra quotes</strong> — ResearchCloud will handle this automatically.</li>
+          <li>Replace <code>bwa</code> and <code>bowtie2</code> with your actual tool IDs.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>Manual Pulsar configuration</h2>
+      <p>If you have an existing Galaxy instance you want to keep, you can connect it to Pulsar by editing Galaxy’s job configuration.</p>
 
       <h3>YAML</h3>
-      <p>Your job configuration is probably at <code>/srv/galaxy/config/job_conf.yml</code></p>
+      <p>Your job configuration is probably at <code>/srv/galaxy/config/job_conf.yml</code>.</p>
 <pre>
 runners:
   local:
