@@ -255,7 +255,46 @@ DEBUG:pulsar.client.client:Uploading path [/tmp/pulsar-check-client.tzn_c2ki/t/s
     </p>
   </footer>
   -->
+<script>
+  function copyToClipboard(targetId, btn) {
+    const node = document.getElementById(targetId);
+    if (!node) return;
 
+    const text = node.innerText || node.textContent || "";
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text)
+        .then(() => flash(btn))
+        .catch(() => fallbackCopy(text, btn));
+    } else {
+      fallbackCopy(text, btn);
+    }
+
+    function fallbackCopy(t, btnEl) {
+      const ta = document.createElement('textarea');
+      ta.value = t;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch(e) {}
+      document.body.removeChild(ta);
+      flash(btnEl);
+    }
+
+    function flash(btnEl) {
+      if (!btnEl) return;
+      const original = btnEl.textContent;
+      btnEl.disabled = true;
+      btnEl.textContent = 'Copied!';
+      setTimeout(() => {
+        btnEl.textContent = original;
+        btnEl.disabled = false;
+      }, 1200);
+    }
+  }
+</script>
 </body>
 
 </html>
