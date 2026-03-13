@@ -24,7 +24,7 @@ slurm_config:
   PrologEpilogTimeout: 90
 
 # Pulsar
-pulsar_root: /mnt/pulsar
+pulsar_root: "{{ src_pulsar_storage_path | default('/mnt/pulsar', true) }}" # component variable attached_storage_path
 
 pulsar_pip_install: true
 pulsar_pycurl_ssl_library: openssl
