@@ -87,6 +87,7 @@
       <ul>
         <li><strong>Admins:</strong> {{ fact_co_groups.src_co_admin }}</li>
         <li><strong>Workspace FQDN:</strong> {{ workspace_fqdn | default('localhost', true) }}</li>
+        <li><strong>Pulsar Root:</strong> <code>{{ pulsar_root }}</code></li>
       </ul>
     </section>
 
@@ -98,7 +99,7 @@
       <p>Copy this <strong>entire line</strong> (including the brackets):</p>
       <div class="copy-box">
         <button class="copy-btn" onclick="copyToClipboard('pulsar-config')">Copy</button>
-        <pre id="pulsar-config">[{url: https://{{ workspace_fqdn | default('localhost', true) }}, private_token: {{ pulsar_token | default('unknown', true) }}, docker_enabled: true}]</pre>
+        <pre id="pulsar-config">[{url: https://{{ workspace_fqdn | default('localhost', true) }}, private_token: {{ pulsar_token | default('unknown', true) }}, docker_enabled: true, pulsar_root: {{ pulsar_root }}}]</pre>
       </div>
       <p><em>Paste this into the <strong>"Connect existing Pulsar"</strong> parameter field.</em></p>
 
@@ -157,7 +158,7 @@ execution:
        # container_resolvers:
        # - type: explicit
        # require_container: True
-       # container_monitor_command: /mnt/pulsar/venv/bin/galaxy-container-monitor
+       # container_monitor_command: {{ pulsar_root }}/venv/bin/galaxy-container-monitor
        # container_monitor_result: callback
        # container_monitor_get_ip_method: command:echo {{ workspace_fqdn | default('localhost', true) }}
 
@@ -189,7 +190,7 @@ execution:
     &lt;param id="tmp_dir"&gt;True&lt;/param&gt;
     &lt;param id="outputs_to_working_directory"&gt;False&lt;/param&gt;
     &lt;param id="require_container"&gt;true&lt;/param&gt;
-    &lt;param id="container_monitor_command"&gt;/mnt/pulsar/venv/bin/galaxy-container-monitor&lt;/param&gt;
+    &lt;param id="container_monitor_command"&gt;{{ pulsar_root }}/venv/bin/galaxy-container-monitor&lt;/param&gt;
     &lt;param id="container_monitor_result"&gt;callback&lt;/param&gt;
     &lt;param id="container_monitor_get_ip_method"&gt;command:echo {{ workspace_fqdn | default('localhost', true)  }}&lt;/param&gt;
 --&gt;
@@ -231,7 +232,7 @@ tools:
     <details><summary>Debugging Pulsar</summary>
     <h2>Testing Pulsar</h2>
     <p>On the pulsar machine, this node, you can run the following command to check that Pulsar is running correctly, but this will likely fail part way through due to <a href="https://github.com/galaxyproject/pulsar/issues/377">galaxyproject/pulsar#377</a>, but if the job executes otherwise then you're probably fine.</p>
-<pre>[root@{{ inventory_hostname }}]$ . /mnt/pulsar/venv/bin/activate
+<pre>[root@{{ inventory_hostname }}]$ . {{ pulsar_root }}/venv/bin/activate
 [root@{{ inventory_hostname }}]$ pulsar-check --private_token={{ pulsar_token | default('unknown', true)  }}
 {}
 INFO:pulsar.client.manager:Setting Pulsar client class to standard, non-caching variant.
