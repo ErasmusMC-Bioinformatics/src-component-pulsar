@@ -1,0 +1,56 @@
+# Managed by Ansible (src-component-pulsar). Do not edit by hand.
+#
+# Deployment compose for TESP-API (GA4GH TES -> Pulsar bridge).
+# Brought up with: docker compose -f docker-compose.deploy.yml up -d --build
+#
+#   TES client --HTTPS--> nginx (host, /tes/) --> tesp-api:8080
+#   tesp-api --> pulsar-proxy (injects private_token) --> host Pulsar :8913 --> SLURM
+#   tesp-api --> tesp-db (MongoDB)
+services:
+  tesp-api:
+    build:
+      context: ./
+      dockerfile: docker/tesp_api/Dockerfile
+      target: development
+    image: tesp-api
+    container_name: tesp-api
+    restart: unless-stopped
+    privileged: true
+    environment:
+      - FASTAPI_PROFILE=src
+      - CONTAINER_TYPE={{ tesp_container_type }}
+    # --root-path makes FastAPI/Swagger generate correct URLs behind the /tes/ proxy.
+    command: ["uvicorn", "--host=0.0.0.0", "--port=8080", "--root-path={{ tesp_root_path }}", "tesp_api.tesp_api:app"]
+    # Only bound to localhost; public access goes through the host nginx at {{ tesp_root_path }}/.
+    ports:
+      - "127.0.0.1:{{ tesp_api_port }}:8080"
+    depends_on:
+      - tesp-db
+      - pulsar-proxy
+    volumes:
+      - ./:/app
+
+  tesp-db:
+    image: mongo:latest
+    container_name: tesp-db
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_DATABASE=tesp
+    volumes:
+      - ./docker/mongodb/data:/data/db
+
+  pulsar-proxy:
+    image: nginx:1.27-alpine
+    container_name: tesp-pulsar-proxy
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - {{ tesp_install_dir }}/pulsar-token-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+
+# Some cloud providers (incl. SURF Research Cloud) require a lower MTU.
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: {{ tesp_network_mtu }}

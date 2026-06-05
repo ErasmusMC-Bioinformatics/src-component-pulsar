@@ -41,6 +41,10 @@
       set_fact:
         pulsar_token: "{{ lookup('community.general.random_string', base64=True, length=24) }}"
 
+    - name: Generate TESP-API basic auth password
+      set_fact:
+        tesp_basic_auth_password: "{{ lookup('community.general.random_string', base64=True, length=24) }}"
+
     - name: Install Dependencies
       ansible.builtin.apt:
         update_cache: true
@@ -86,3 +90,52 @@
         owner: root
         group: root
         mode: '0755'
+
+    # ---- TESP-API: GA4GH TES front-end for Pulsar ----
+    # Lets TES clients submit jobs that are translated into Pulsar jobs and run
+    # on this node's SLURM/DRMAA. Deployed as a Docker Compose stack
+    # (tesp-api + MongoDB + a token-injecting Pulsar proxy).
+    - name: Clone TESP-API repository
+      ansible.builtin.git:
+        repo: "{{ tesp_api_repo }}"
+        dest: "{{ tesp_install_dir }}"
+        version: "{{ tesp_api_version }}"
+        force: true
+
+    - name: Ensure TESP-API MongoDB data directory exists
+      ansible.builtin.file:
+        path: "{{ tesp_install_dir }}/docker/mongodb/data"
+        state: directory
+        mode: '0755'
+
+    - name: Template TESP-API settings.toml
+      ansible.builtin.template:
+        src: templates/tesp-api/settings.toml.j2
+        dest: "{{ tesp_install_dir }}/settings.toml"
+        owner: root
+        group: root
+        mode: '0640'
+
+    - name: Template Pulsar token-injection proxy config
+      ansible.builtin.template:
+        src: templates/tesp-api/pulsar-token-proxy.conf.j2
+        dest: "{{ tesp_install_dir }}/pulsar-token-proxy.conf"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Template TESP-API deployment compose file
+      ansible.builtin.template:
+        src: templates/tesp-api/docker-compose.yml.j2
+        dest: "{{ tesp_install_dir }}/docker-compose.deploy.yml"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Build and start the TESP-API stack
+      community.docker.docker_compose_v2:
+        project_src: "{{ tesp_install_dir }}"
+        files:
+          - docker-compose.deploy.yml
+        build: always
+        state: present

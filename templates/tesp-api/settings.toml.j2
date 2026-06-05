@@ -1,0 +1,28 @@
+# Managed by Ansible (src-component-pulsar). Do not edit by hand.
+#
+# TESP-API talks to the host Pulsar through the `pulsar-proxy` sidecar, which
+# injects Pulsar's private_token into every request (tesp-api itself cannot
+# send the token). MongoDB and the proxy are reached by their compose service
+# names on the stack's internal network.
+[default]
+db.mongodb_uri = "mongodb://tesp-db:27017"
+pulsar.url = "http://pulsar-proxy:8913"
+pulsar.status.poll_interval = 4
+pulsar.status.max_polls = 400
+pulsar.client_timeout = 30
+
+logging.level = "INFO"
+logging.output_json = false
+
+oauth.enable = false
+basic_auth.enable = true
+basic_auth.username = "{{ tesp_basic_auth_user }}"
+basic_auth.password = "{{ tesp_basic_auth_password }}"
+
+[src]
+db.mongodb_uri = "mongodb://tesp-db:27017"
+pulsar.url = "http://pulsar-proxy:8913"
+logging.output_json = false
+basic_auth.enable = true
+basic_auth.username = "{{ tesp_basic_auth_user }}"
+basic_auth.password = "{{ tesp_basic_auth_password }}"

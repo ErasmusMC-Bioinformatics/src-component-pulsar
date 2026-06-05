@@ -122,6 +122,32 @@
     </section>
 
     <section>
+      <h2>Connect a GA4GH TES client</h2>
+      <p>This node also exposes a <strong>GA4GH Task Execution Service (TES)</strong> endpoint (via
+        <a href="https://github.com/CESNET/tesp-api">TESP-API</a>). TES clients submit tasks that are
+        translated into Pulsar jobs and executed on this node's SLURM cluster.</p>
+
+      <ul>
+        <li><strong>TES base URL:</strong> <code>https://{{ workspace_fqdn | default('localhost', true) }}{{ tesp_root_path | default('/tes', true) }}</code></li>
+        <li><strong>Auth:</strong> HTTP Basic</li>
+        <li><strong>Username:</strong> <code>{{ tesp_basic_auth_user | default('tes', true) }}</code></li>
+        <li><strong>Password:</strong> <code>{{ tesp_basic_auth_password | default('unknown', true) }}</code></li>
+      </ul>
+
+      <p>Quick check (lists the TES service info):</p>
+      <div class="copy-box">
+        <button class="copy-btn" onclick="copyToClipboard('tes-curl')">Copy</button>
+        <pre id="tes-curl">curl -u {{ tesp_basic_auth_user | default('tes', true) }}:{{ tesp_basic_auth_password | default('unknown', true) }} https://{{ workspace_fqdn | default('localhost', true) }}{{ tesp_root_path | default('/tes', true) }}/v1/service-info</pre>
+      </div>
+
+      <div class="warning">
+        <strong>Note:</strong> jobs run inside containers on this node
+        (<code>CONTAINER_TYPE={{ tesp_container_type | default('both', true) }}</code>), so each TES task
+        must specify a container <code>image</code>.
+      </div>
+    </section>
+
+    <section>
       <h2>Manual Pulsar configuration</h2>
       <p>If you have an existing Galaxy instance you want to keep, you can connect it to Pulsar by editing Galaxy’s job configuration.</p>
 

@@ -5,6 +5,10 @@ nginx_reverse_proxy_locations:
   auth: sram
   root: /srv/static/
   try_files: $uri/index.html =404
+- name: tes
+  location: /tes/
+  proxy_pass: "http://127.0.0.1:8080/"
+  auth: noauth
 - name: pulsar
   location: /
   proxy_pass: "http://localhost:8913"
@@ -93,3 +97,18 @@ pulsar_job_metrics_plugins:
 docker_install_compose: true
 docker_users:
   - "{{ pulsar_user.name }}"
+
+# TESP-API (GA4GH TES -> Pulsar bridge)
+# Exposed publicly via nginx at https://<workspace_fqdn>{{ tesp_root_path }}/ and
+# protected by tesp-api's own HTTP basic auth (password generated at deploy time).
+tesp_api_repo: "https://github.com/CESNET/tesp-api.git"
+tesp_api_version: "main"
+tesp_install_dir: /srv/tesp-api
+tesp_api_port: 8080          # host-localhost port; must match the /tes/ nginx proxy_pass above
+tesp_root_path: /tes         # public URL prefix (also passed to uvicorn --root-path)
+tesp_container_type: singularity  # docker | singularity -- how tesp-api wraps TES task containers.
+                                  # NOTE: "both" is broken upstream (emits `singularity exec` but
+                                  # omits the docker:// image prefix); use singularity on this
+                                  # apptainer/SLURM node so images resolve as docker://<image>.
+tesp_network_mtu: 1442       # SURF Research Cloud requires a lower MTU
+tesp_basic_auth_user: tes

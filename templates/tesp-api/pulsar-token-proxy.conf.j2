@@ -1,0 +1,38 @@
+# Managed by Ansible (src-component-pulsar). Do not edit by hand.
+#
+# Auth bridge for TESP-API -> Pulsar.
+#
+# tesp-api's Pulsar REST client (tesp_api/service/pulsar_operations.py) sends no
+# credentials, but the host Pulsar enforces a `private_token` query-string
+# parameter on every request (pulsar/web/routes.py). This sidecar accepts the
+# unauthenticated requests from tesp-api, appends the token, and forwards them
+# to the host Pulsar on :8913 -- so the public Pulsar endpoint stays protected
+# while tesp-api gets an authenticated, localhost-only channel.
+
+upstream pulsar_host {
+    # Resolved from /etc/hosts (compose `extra_hosts: host.docker.internal:host-gateway`).
+    server host.docker.internal:8913;
+}
+
+# Append the token to the existing query string (or create one if absent).
+map $args $tesp_pulsar_args {
+    ""      "private_token={{ pulsar_token }}";
+    default "$args&private_token={{ pulsar_token }}";
+}
+
+server {
+    listen 8913;
+    server_name _;
+
+    # Pulsar file staging uploads/downloads can be large; don't buffer or cap them.
+    client_max_body_size 0;
+    proxy_request_buffering off;
+
+    location / {
+        set $args $tesp_pulsar_args;
+        proxy_pass http://pulsar_host;
+        proxy_set_header Host $host;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}
