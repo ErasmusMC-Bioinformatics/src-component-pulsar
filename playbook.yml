@@ -9,7 +9,6 @@
       ansible.builtin.apt:
         update_cache: true
         name:
-          - slurm-drmaa1
           - chrony
         state: present
 
@@ -63,9 +62,22 @@
         dest: /opt/SLURM-CLI-API-Proxy-client
         version: main
 
+    - name: Add deadsnakes PPA (python3.12 for the SLURM proxy)
+      ansible.builtin.apt_repository:
+        repo: ppa:deadsnakes/ppa
+        state: present
+
+    - name: Install Python 3.12 for the SLURM proxy
+      ansible.builtin.apt:
+        update_cache: true
+        name:
+          - python3.12
+          - python3.12-venv
+        state: present
+
     - name: Create virtual environment for SLURM CLI API Proxy client
       ansible.builtin.command:
-        cmd: python3 -m venv /opt/SLURM-CLI-API-Proxy-client/env
+        cmd: python3.12 -m venv /opt/SLURM-CLI-API-Proxy-client/env
         creates: /opt/SLURM-CLI-API-Proxy-client/env/bin/activate
 
     - name: Install SLURM CLI API Proxy client into virtualenv
@@ -73,17 +85,6 @@
         name: .
         chdir: /opt/SLURM-CLI-API-Proxy-client
         virtualenv: /opt/SLURM-CLI-API-Proxy-client/env
-
-    - name: Configure SLURM proxy environment variables
-      ansible.builtin.copy:
-        dest: /etc/profile.d/slurm_proxy.sh
-        content: |
-          export PROXY_SLURM_API_URL=http://<slurm-controller>:6820
-          export SLURM_JWT=$(scontrol token)
-          export PATH=/opt/SLURM-CLI-API-Proxy-client/env/bin:$PATH
-        owner: root
-        group: root
-        mode: '0755'
 
   roles:
     - geerlingguy.docker
@@ -108,10 +109,46 @@
         group: www-data
         mode: '0640'
 
-    - name: Deploy epilog
-      copy:
-        src: files/epilog.sh
-        dest: /etc/slurm/epilog.sh
-        owner: root
-        group: root
+    - name: Ensure Pulsar config dir exists
+      ansible.builtin.file:
+        path: /etc/pulsar
+        state: directory
+        owner: "{{ pulsar_user.name }}"
+        group: "{{ pulsar_user.name }}"
+        mode: '0750'
+
+    # The proxy shims read PROXY_SLURM_API_URL / SLURM_JWT / SLURM_USER from
+    # the environment of the Pulsar service. To rotate an expired token:
+    # edit this file, then `sudo systemctl restart pulsar`.
+    - name: Configure SLURM proxy environment variables
+      ansible.builtin.copy:
+        dest: /etc/pulsar/slurm_proxy.env
+        owner: "{{ pulsar_user.name }}"
+        group: "{{ pulsar_user.name }}"
+        mode: '0640'
+        content: |
+          PATH=/opt/SLURM-CLI-API-Proxy-client/env/bin:/mnt/pulsar/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          PROXY_SLURM_API_URL={{ proxy_slurm_api_url }}
+          SLURM_JWT={{ slurm_jwt }}
+          SLURM_USER={{ slurm_user }}
+      no_log: true
+
+    - name: Ensure pulsar systemd drop-in dir exists
+      ansible.builtin.file:
+        path: /etc/systemd/system/pulsar.service.d
+        state: directory
         mode: '0755'
+
+    - name: Make the Pulsar service load the proxy env file
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/pulsar.service.d/slurm-proxy.conf
+        mode: '0644'
+        content: |
+          [Service]
+          EnvironmentFile=/etc/pulsar/slurm_proxy.env
+
+    - name: Reload systemd and restart Pulsar with the proxy env
+      ansible.builtin.systemd:
+        name: pulsar
+        state: restarted
+        daemon_reload: true

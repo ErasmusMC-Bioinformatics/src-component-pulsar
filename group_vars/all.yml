@@ -15,13 +15,17 @@ cvmfs_role: client
 galaxy_cvmfs_repos_enabled: config-repo
 cvmfs_quota_limit: 500
 
-# SLURM
-slurm_roles: ['controller', 'exec']
+# SLURM 
+
+slurm_roles: ['controller']
 slurm_nodes:
 - name: localhost
-slurm_config:
-  Epilog: /etc/slurm/epilog.sh
-  PrologEpilogTimeout: 90
+
+# Target SLURM REST API (Snellius)
+
+slurm_user: "{{ src_slurm_user | default('please-change-me', true) }}"
+slurm_jwt: "{{ src_slurm_jwt | default('please-change-me', true) }}"
+proxy_slurm_api_url: "{{ src_slurm_api_url | default('https://slurm.snellius.surf.nl', true) }}"
 
 # Pulsar
 pulsar_root: /mnt/pulsar
@@ -31,8 +35,8 @@ pulsar_pycurl_ssl_library: openssl
 pulsar_systemd: true
 pulsar_systemd_runner: uwsgi
 
-pulsar_systemd_environment:
-- DRMAA_LIBRARY_PATH=/usr/lib/slurm-drmaa/lib/libdrmaa.so.1
+
+pulsar_systemd_environment: []
 
 pulsar_create_user: true
 pulsar_user: {name: pulsar, shell: /bin/bash}
@@ -45,8 +49,6 @@ pulsar_optional_dependencies:
   # more robust in small ways.
   - psutil
   - uwsgi
-  # drmaa required if connecting to an external DRM using it.
-  - drmaa
   # For galaxy-container-monitor
   - galaxy-job-execution
 
@@ -57,21 +59,13 @@ pulsar_uwsgi_options:
 pulsar_yaml_config:
   managers:
     _default_:
-      # type: queued_cli
-      # job_plugin: Slurm
-      type: queued_drmaa
-      # type: queued_python
-      # type: queued_condor
-      # submit_request_memory: 85
+      type: queued_cli
+      job_plugin: Slurm
   private_token: "{{ pulsar_token }}"
   staging_directory: "{{ pulsar_staging_dir }}"
   persistence_directory: "{{ pulsar_persistence_dir }}"
   tool_dependency_dir: "{{ pulsar_dependencies_dir }}"
   min_polling_interval: 0.5
-  # We also need to create the dependency resolvers configuration so pulsar
-  # knows how to find and install dependencies for the tools we ask it to run.
-  # The simplest method which covers 99% of the use cases is to use conda auto
-  # installs similar to how Galaxy works.
   dependency_resolution:
     resolvers:
       - type: conda
