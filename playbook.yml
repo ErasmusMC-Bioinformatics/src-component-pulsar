@@ -62,7 +62,7 @@
         dest: /opt/SLURM-CLI-API-Proxy-client
         version: main
 
-    - name: Add deadsnakes PPA (python3.12 for the SLURM proxy)
+    - name: Add deadsnakes PPA
       ansible.builtin.apt_repository:
         repo: ppa:deadsnakes/ppa
         state: present
@@ -77,14 +77,25 @@
 
     - name: Create virtual environment for SLURM CLI API Proxy client
       ansible.builtin.command:
-        cmd: python3.12 -m venv /opt/SLURM-CLI-API-Proxy-client/env
-        creates: /opt/SLURM-CLI-API-Proxy-client/env/bin/activate
+        cmd: /usr/bin/python3.12 -m venv /opt/SLURM-CLI-API-Proxy-client/env
+        creates: /opt/SLURM-CLI-API-Proxy-client/env/bin/python3.12
 
-    - name: Install SLURM CLI API Proxy client into virtualenv
+    - name: Install SLURM CLI API Proxy client and generated OpenAPI client
       ansible.builtin.pip:
-        name: .
-        chdir: /opt/SLURM-CLI-API-Proxy-client
+        name:
+          - /opt/SLURM-CLI-API-Proxy-client
+          - /opt/SLURM-CLI-API-Proxy-client/slurm_api_client
         virtualenv: /opt/SLURM-CLI-API-Proxy-client/env
+
+    # Upstream setup.py declares packages=["src", "slurm_api_client"], so the
+    # real package (src/slurm_api_cli_proxy) is never importable on its own.
+    - name: Expose src/ on the venv import path
+      ansible.builtin.copy:
+        content: "/opt/SLURM-CLI-API-Proxy-client/src\n"
+        dest: /opt/SLURM-CLI-API-Proxy-client/env/lib/python3.12/site-packages/slurm_proxy_src.pth
+        owner: root
+        group: root
+        mode: "0644"
 
   roles:
     - geerlingguy.docker
@@ -119,7 +130,7 @@
 
     # The proxy shims read PROXY_SLURM_API_URL / SLURM_JWT / SLURM_USER from
     # the environment of the Pulsar service. To rotate an expired token:
-    # edit this file, then `sudo systemctl restart pulsar`.
+    # edit /etc/pulsar/slurm_proxy.env, then `sudo systemctl restart pulsar`.
     - name: Configure SLURM proxy environment variables
       ansible.builtin.copy:
         dest: /etc/pulsar/slurm_proxy.env
