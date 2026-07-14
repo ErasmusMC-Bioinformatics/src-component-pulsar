@@ -43,6 +43,12 @@ pulsar_user: {name: pulsar, shell: /bin/bash}
 
 pulsar_optional_dependencies:
   - pyOpenSSL
+  # uwsgi starts Pulsar via --ini-paste; pulsar-app releases after ~2026-07
+  # no longer pull these in themselves, and without them uwsgi dies at boot
+  # with "ModuleNotFoundError: No module named 'paste'"
+  - Paste
+  - PasteDeploy
+  - PasteScript
   # For remote transfers initiated on the Pulsar end rather than the Galaxy end
   - pycurl
   # psutil and pylockfile are optional dependencies but can make Pulsar

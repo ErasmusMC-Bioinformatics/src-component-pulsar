@@ -148,9 +148,14 @@ sudo systemctl restart pulsar</pre>
       <p>Example: send BWA and Bowtie2 tools to this Pulsar server:</p>
       <div class="copy-box">
         <button class="copy-btn" onclick="copyToClipboard('tool-mappings', this)">Copy</button>
-        <pre id="tool-mappings">[{tool_id: bwa, environment: remote_{{ ansible_hostname | replace('.', '-') | replace('_', '-') }}}, {tool_id: bowtie2, environment: remote_{{ ansible_hostname | replace('.', '-') | replace('_', '-') }}}]</pre>
+        <pre id="tool-mappings">[{tool_id: bwa, environment: remote_{{ workspace_fqdn | default('localhost', true) | replace('.', '-') | replace('_', '-') }}_basic}, {tool_id: bowtie2, environment: remote_{{ workspace_fqdn | default('localhost', true) | replace('.', '-') | replace('_', '-') }}_basic}]</pre>
       </div>
       <p><em>Paste this into the <strong>"Send tools to Pulsar"</strong> parameter field.</em></p>
+      <p><em>Galaxy generates two environments for this Pulsar:
+        <code>remote_{{ workspace_fqdn | default('localhost', true) | replace('.', '-') | replace('_', '-') }}_basic</code> for regular tools and
+        <code>remote_{{ workspace_fqdn | default('localhost', true) | replace('.', '-') | replace('_', '-') }}</code> for Docker/interactive tools —
+        the environment name must match exactly, or Galaxy jobs fail with
+        <code>KeyError</code> before submission.</em></p>
 
       <div class="warning">
         <strong>Important Notes:</strong>

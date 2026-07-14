@@ -61,6 +61,7 @@
         repo: https://github.com/SLURM-CLI-API-Proxy/SLURM-CLI-API-Proxy-client.git
         dest: /opt/SLURM-CLI-API-Proxy-client
         version: main
+        force: true  # discard the local sbatch patch below so re-runs don't fail; it is re-applied afterwards
 
     - name: Add deadsnakes PPA
       ansible.builtin.apt_repository:
@@ -96,6 +97,35 @@
         owner: root
         group: root
         mode: "0644"
+
+    # Upstream's sbatch shim never prints the submitted job id, but Pulsar
+    # parses "Submitted batch job <id>" from sbatch stdout to track the job.
+    # Patch the shim until this is fixed upstream in
+    # https://github.com/SLURM-CLI-API-Proxy/SLURM-CLI-API-Proxy-client
+    - name: Patch sbatch shim to print the submitted job id
+      ansible.builtin.shell:
+        cmd: |
+          set -e
+          f=/opt/SLURM-CLI-API-Proxy-client/src/slurm_api_cli_proxy/client_args_linker/v43/slurm_api_client_wrapper_v43.py
+          if grep -q "Submitted batch job" "$f"; then exit 0; fi
+          python3 - "$f" <<'PYEOF'
+          import sys
+          from pathlib import Path
+          p = Path(sys.argv[1])
+          lines = p.read_text().splitlines(keepends=True)
+          start = next(i for i, l in enumerate(lines) if "def sbatch_post_request" in l)
+          ret = next(i for i, l in enumerate(lines[start:], start) if l.strip() == "return response")
+          indent = " " * (len(lines[ret]) - len(lines[ret].lstrip()))
+          lines[ret:ret] = [
+              f"{indent}if not response.errors and api_response.job_id is not None:\n",
+              f'{indent}    response.output = f"Submitted batch job {{api_response.job_id}}"\n',
+              "\n",
+          ]
+          p.write_text("".join(lines))
+          PYEOF
+          echo patched
+      register: sbatch_shim_patch
+      changed_when: "'patched' in sbatch_shim_patch.stdout"
 
   roles:
     - geerlingguy.docker
