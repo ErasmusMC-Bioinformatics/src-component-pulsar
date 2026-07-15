@@ -118,7 +118,7 @@
           indent = " " * (len(lines[ret]) - len(lines[ret].lstrip()))
           lines[ret:ret] = [
               f"{indent}if not response.errors and api_response.job_id is not None:\n",
-              f'{indent}    response.output = f"Submitted batch job {{api_response.job_id}}"\n',
+              f'{indent}    response.output = "Submitted batch job " + str(api_response.job_id)\n',
               "\n",
           ]
           p.write_text("".join(lines))
